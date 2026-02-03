@@ -286,7 +286,7 @@ export const CreatePostPage = () => {
                           Generated Images
                         </h3>
                         <div className="grid grid-cols-2 gap-3">
-                          {generatedContent.generatedImages.map((img: string, idx: number) => (
+                          {generatedContent.generatedImages.map((_img: string, idx: number) => (
                             <div key={idx} className="relative group">
                               <div className="aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg flex items-center justify-center border-2 border-indigo-200">
                                 <ImageIcon className="text-indigo-400" size={32} />

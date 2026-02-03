@@ -15,7 +15,7 @@ export const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const logout = useAuthStore((state) => state.logout);
-  const user = useAuthStore((state) => state.user);
+  const _user = useAuthStore((state) => state.user);
   const { success } = useToastStore();
 
   const handleLogout = () => {

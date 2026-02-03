@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Search, Menu, X, ChevronDown, User, Settings, LogOut } from 'lucide-react';
+import { Bell, Search, ChevronDown, User, Settings, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useToastStore } from '../store/toastStore';
