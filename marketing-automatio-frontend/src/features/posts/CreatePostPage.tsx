@@ -4,7 +4,7 @@ import { Header } from '../../components/Header';
 import { Card } from '../../components/ui/Card';
 // Button für spätere Verwendung
 // import { Button } from '../../components/ui/Button';
-import { Sparkles, Image as ImageIcon, FileText, Send, RefreshCw } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, FileText, Send, RefreshCw, Calendar } from 'lucide-react';
 
 type Platform = 'instagram-feed' | 'instagram-reels' | 'linkedin';
 type ContentType = 'text' | 'article' | 'carousel';
@@ -354,7 +354,7 @@ export const CreatePostPage = () => {
                         }}
                         className="w-full mt-3 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
                       >
-                        <CalendarIcon size={18} />
+                        <Calendar size={18} />
                         Schedule for Later
                       </button>
                     </div>
