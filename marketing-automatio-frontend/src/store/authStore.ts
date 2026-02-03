@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, AuthState, LoginCredentials, SignupCredentials } from '../types';
+import type { User, AuthState, LoginCredentials, SignupCredentials, AuthResponse } from '../types';
 import { authStorage } from '../lib/storage';
+import { api } from '../services/apiClient';
+import { API_ENDPOINTS } from '../lib/constants';
 
 interface AuthStore extends AuthState {
   login: (credentials: LoginCredentials) => Promise<void>;
@@ -23,26 +25,17 @@ export const useAuthStore = create<AuthStore>()(
       login: async (credentials: LoginCredentials) => {
         set({ isLoading: true });
         try {
-          // TODO: Replace with actual API call
-          // const response = await api.post('/auth/login', credentials);
-          
-          // Mock successful login
-          const mockUser: User = {
-            id: '1',
-            email: credentials.email,
-            firstName: 'John',
-            lastName: 'Doe',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          const mockToken = 'mock-jwt-token';
+          // Echter API-Aufruf zum Backend
+          const response = await api.post<AuthResponse>(API_ENDPOINTS.AUTH.LOGIN, credentials);
 
-          authStorage.setToken(mockToken);
-          authStorage.setUser(mockUser);
+          const { user, token } = response.data;
+
+          authStorage.setToken(token);
+          authStorage.setUser(user);
 
           set({
-            user: mockUser,
-            token: mockToken,
+            user,
+            token,
             isAuthenticated: true,
             isLoading: false,
           });
@@ -55,26 +48,17 @@ export const useAuthStore = create<AuthStore>()(
       signup: async (credentials: SignupCredentials) => {
         set({ isLoading: true });
         try {
-          // TODO: Replace with actual API call
-          // const response = await api.post('/auth/signup', credentials);
-          
-          // Mock successful signup
-          const mockUser: User = {
-            id: '1',
-            email: credentials.email,
-            firstName: credentials.firstName,
-            lastName: credentials.lastName,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          const mockToken = 'mock-jwt-token';
+          // Echter API-Aufruf zum Backend
+          const response = await api.post<AuthResponse>(API_ENDPOINTS.AUTH.SIGNUP, credentials);
 
-          authStorage.setToken(mockToken);
-          authStorage.setUser(mockUser);
+          const { user, token } = response.data;
+
+          authStorage.setToken(token);
+          authStorage.setUser(user);
 
           set({
-            user: mockUser,
-            token: mockToken,
+            user,
+            token,
             isAuthenticated: true,
             isLoading: false,
           });
