@@ -23,9 +23,7 @@ interface Post {
   createdAt: string;
 }
 
-// ApiResponse type - wird durch api wrapper verwendet
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-type _ApiResponse<T> = { success: boolean; data: T };
+// ApiResponse type available: { success: boolean; data: T }
 
 const quickActions = [
   { icon: Link2, label: 'Connect Account', description: 'Link your social media accounts' },
