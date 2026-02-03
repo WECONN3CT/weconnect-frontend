@@ -67,8 +67,8 @@ export const AccountsPage = () => {
     accessToken: '',
   });
 
-  // LinkedIn Form State
-  const [linkedInForm, setLinkedInForm] = useState({
+  // LinkedIn Form State (für spätere Verwendung)
+  const [_linkedInForm, _setLinkedInForm] = useState({
     clientId: '',
     clientSecret: '',
     redirectUri: '',

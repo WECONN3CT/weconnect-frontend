@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Sidebar } from '../../components/Sidebar';
 import { Header } from '../../components/Header';
 import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Sparkles, Image as ImageIcon, FileText, Send, RefreshCw, Calendar as CalendarIcon } from 'lucide-react';
+// Button für spätere Verwendung
+// import { Button } from '../../components/ui/Button';
+import { Sparkles, Image as ImageIcon, FileText, Send, RefreshCw } from 'lucide-react';
 
 type Platform = 'instagram-feed' | 'instagram-reels' | 'linkedin';
 type ContentType = 'text' | 'article' | 'carousel';

@@ -2,15 +2,14 @@ import { useState } from 'react';
 import { Sidebar } from '../../components/Sidebar';
 import { Header } from '../../components/Header';
 import { Card } from '../../components/ui/Card';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Plus, 
-  Clock, 
-  Webhook, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Clock,
+  Webhook,
   Hand,
   AlertTriangle,
-  Calendar as CalendarIcon,
   Repeat
 } from 'lucide-react';
 
@@ -36,7 +35,7 @@ const POSTING_LIMITS = {
 
 export const CalendarPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [_selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([
     {

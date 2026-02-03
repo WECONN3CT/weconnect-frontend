@@ -23,10 +23,11 @@ interface Post {
   createdAt: string;
 }
 
-interface ApiResponse<T> {
+// ApiResponse type für spätere Verwendung
+type _ApiResponse<T> = {
   success: boolean;
   data: T;
-}
+};
 
 const quickActions = [
   { icon: Link2, label: 'Connect Account', description: 'Link your social media accounts' },
@@ -88,7 +89,7 @@ export const DashboardPage = () => {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {

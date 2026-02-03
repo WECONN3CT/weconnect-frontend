@@ -66,27 +66,27 @@ export const HowItWorks = () => {
     <section className="relative py-24 bg-gradient-to-b from-white via-primary-50/30 to-white overflow-hidden">
       {/* Background accents */}
       <div
-        ref={(node) => node && orbRefs.current.push(node)}
+        ref={(node: HTMLDivElement | null) => { if (node) orbRefs.current.push(node); }}
         className="pointer-events-none absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary-200/30 blur-3xl"
       ></div>
       <div
-        ref={(node) => node && orbRefs.current.push(node)}
+        ref={(node: HTMLDivElement | null) => { if (node) orbRefs.current.push(node); }}
         className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-purple-200/30 blur-3xl"
       ></div>
       <div
-        ref={(node) => node && orbRefs.current.push(node)}
+        ref={(node: HTMLDivElement | null) => { if (node) orbRefs.current.push(node); }}
         className="pointer-events-none absolute top-10 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-primary-300/20 blur-2xl"
       ></div>
       <div
-        ref={(node) => node && orbRefs.current.push(node)}
+        ref={(node: HTMLDivElement | null) => { if (node) orbRefs.current.push(node); }}
         className="pointer-events-none absolute bottom-10 right-16 h-32 w-32 rounded-full bg-purple-300/20 blur-2xl"
       ></div>
       <div
-        ref={(node) => node && orbRefs.current.push(node)}
+        ref={(node: HTMLDivElement | null) => { if (node) orbRefs.current.push(node); }}
         className="pointer-events-none absolute top-24 right-10 h-20 w-20 rounded-full bg-primary-400/20 blur-xl"
       ></div>
       <div
-        ref={(node) => node && orbRefs.current.push(node)}
+        ref={(node: HTMLDivElement | null) => { if (node) orbRefs.current.push(node); }}
         className="pointer-events-none absolute bottom-24 left-10 h-24 w-24 rounded-full border border-primary-300/30 bg-white/10 backdrop-blur-sm"
       ></div>
 
@@ -108,7 +108,7 @@ export const HowItWorks = () => {
             {steps.map((step) => (
               <div
                 key={step.number}
-                ref={(node) => node && cardsRef.current.push(node)}
+                ref={(node: HTMLDivElement | null) => { if (node) cardsRef.current.push(node); }}
                 className="group relative rounded-2xl border border-primary-100/80 bg-white/80 p-8 text-center shadow-sm backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-primary-300/80 hover:shadow-xl"
               >
                 {/* Step Number Circle */}
