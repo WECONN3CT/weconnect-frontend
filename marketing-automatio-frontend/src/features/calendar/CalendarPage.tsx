@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from '../../components/Sidebar';
 import { Header } from '../../components/Header';
 import { Card } from '../../components/ui/Card';
@@ -10,8 +10,12 @@ import {
   Webhook,
   Hand,
   AlertTriangle,
-  Repeat
+  Repeat,
+  Loader2
 } from 'lucide-react';
+import { api } from '../../services/apiClient';
+import { API_ENDPOINTS } from '../../lib/constants';
+import { useToastStore } from '../../store/toastStore';
 
 type TriggerType = 'manual' | 'scheduled' | 'webhook';
 type RecurrenceType = 'once' | 'daily' | 'weekly' | 'custom';
@@ -34,38 +38,49 @@ const POSTING_LIMITS = {
 };
 
 export const CalendarPage = () => {
+  const { success, error: showError } = useToastStore();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [_selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([
-    {
-      id: '1',
-      title: 'Product Launch Announcement',
-      date: new Date(2026, 1, 5),
-      time: '14:00',
-      platform: 'linkedin',
-      triggerType: 'scheduled',
-      recurrence: 'once',
-    },
-    {
-      id: '2',
-      title: 'Behind the Scenes Content',
-      date: new Date(2026, 1, 6),
-      time: '09:00',
-      platform: 'instagram',
-      triggerType: 'scheduled',
-      recurrence: 'once',
-    },
-    {
-      id: '3',
-      title: 'Weekly Industry Insights',
-      date: new Date(2026, 1, 7),
-      time: '11:00',
-      platform: 'linkedin',
-      triggerType: 'scheduled',
-      recurrence: 'weekly',
-    },
-  ]);
+  const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
+  const [_isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Posts aus der Datenbank laden
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.get(API_ENDPOINTS.POSTS.LIST);
+        const postsData = (response as any)?.data || response;
+
+        if (Array.isArray(postsData)) {
+          // Konvertiere Backend-Posts zu Calendar-Format
+          const calendarPosts: ScheduledPost[] = postsData
+            .filter((p: any) => p.scheduledAt) // Nur geplante Posts
+            .map((p: any) => {
+              const scheduledDate = new Date(p.scheduledAt);
+              return {
+                id: p.id,
+                title: p.title || p.content?.substring(0, 30) + '...',
+                date: scheduledDate,
+                time: scheduledDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+                platform: (p.platforms?.[0] || 'instagram') as Platform,
+                triggerType: 'scheduled' as TriggerType,
+                recurrence: 'once' as RecurrenceType,
+              };
+            });
+          setScheduledPosts(calendarPosts);
+        }
+      } catch (err) {
+        console.error('Failed to fetch posts:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   // Form state for new post
   const [newPost, setNewPost] = useState({
@@ -129,30 +144,53 @@ export const CalendarPage = () => {
     );
   };
 
-  const handleAddPost = () => {
+  const handleAddPost = async () => {
     if (!newPost.title || !newPost.date || !newPost.time) return;
 
-    const post: ScheduledPost = {
-      id: Date.now().toString(),
-      title: newPost.title,
-      date: new Date(newPost.date),
-      time: newPost.time,
-      platform: newPost.platform,
-      triggerType: newPost.triggerType,
-      recurrence: newPost.recurrence,
-    };
+    setIsSaving(true);
+    try {
+      // Post in der Datenbank speichern
+      const scheduledAt = new Date(`${newPost.date}T${newPost.time}`).toISOString();
 
-    setScheduledPosts([...scheduledPosts, post]);
-    setShowAddModal(false);
-    setNewPost({
-      title: '',
-      date: '',
-      time: '',
-      platform: 'instagram',
-      triggerType: 'scheduled',
-      recurrence: 'once',
-      customFrequency: '3',
-    });
+      const response = await api.post(API_ENDPOINTS.POSTS.CREATE, {
+        title: newPost.title,
+        content: newPost.title, // Content ist Pflichtfeld
+        platforms: [newPost.platform],
+        status: 'scheduled',
+        scheduledAt: scheduledAt,
+      });
+
+      const savedPost = (response as any)?.data || response;
+
+      // Lokalen State aktualisieren
+      const post: ScheduledPost = {
+        id: savedPost?.id || Date.now().toString(),
+        title: newPost.title,
+        date: new Date(newPost.date),
+        time: newPost.time,
+        platform: newPost.platform,
+        triggerType: newPost.triggerType,
+        recurrence: newPost.recurrence,
+      };
+
+      setScheduledPosts([...scheduledPosts, post]);
+      setShowAddModal(false);
+      setNewPost({
+        title: '',
+        date: '',
+        time: '',
+        platform: 'instagram',
+        triggerType: 'scheduled',
+        recurrence: 'once',
+        customFrequency: '3',
+      });
+
+      success('Post erfolgreich geplant!');
+    } catch (err: any) {
+      showError(err.response?.data?.message || 'Fehler beim Speichern');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const monthNames = [
@@ -468,16 +506,24 @@ export const CalendarPage = () => {
                   <div className="flex gap-3 pt-4">
                     <button
                       onClick={() => setShowAddModal(false)}
-                      className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+                      disabled={isSaving}
+                      className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleAddPost}
-                      disabled={!newPost.title || !newPost.date || !newPost.time}
-                      className="flex-1 bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                      disabled={!newPost.title || !newPost.date || !newPost.time || isSaving}
+                      className="flex-1 bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
-                      Schedule Post
+                      {isSaving ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" />
+                          Speichern...
+                        </>
+                      ) : (
+                        'Schedule Post'
+                      )}
                     </button>
                   </div>
                 </div>
