@@ -52,24 +52,39 @@ const AuthPage = ({ initialMode = "login" }: AuthPageProps) => {
 
   const clearFormError = () => setFormError(null);
 
+  // Passwort-Validierung (gleiche Regeln wie Backend)
+  const validatePassword = (pwd: string): string | null => {
+    if (!pwd) return "Passwort ist erforderlich";
+    if (pwd.length < 8) return "Passwort muss mindestens 8 Zeichen haben";
+    if (pwd.length > 128) return "Passwort darf maximal 128 Zeichen haben";
+    if (!/[A-Z]/.test(pwd)) return "Passwort muss einen Großbuchstaben enthalten";
+    if (!/[a-z]/.test(pwd)) return "Passwort muss einen Kleinbuchstaben enthalten";
+    if (!/[0-9]/.test(pwd)) return "Passwort muss eine Zahl enthalten";
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pwd)) return "Passwort muss ein Sonderzeichen enthalten";
+    return null;
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!email) {
-      newErrors.email = "Email is required";
+      newErrors.email = "E-Mail ist erforderlich";
     } else if (!isValidEmail(email)) {
-      newErrors.email = "Invalid email format";
+      newErrors.email = "Ungültiges E-Mail-Format";
     }
 
-    if (!password) {
-      newErrors.password = "Password is required";
-    } else if (password.length < 8) {
-      newErrors.password = "Password must be at least 8 characters";
+    // Bei Signup: strenge Passwort-Validierung
+    // Bei Login: nur prüfen ob vorhanden
+    if (mode === "signup") {
+      const pwdError = validatePassword(password);
+      if (pwdError) newErrors.password = pwdError;
+    } else {
+      if (!password) newErrors.password = "Passwort ist erforderlich";
     }
 
     if (mode === "signup") {
-      if (!firstName) newErrors.firstName = "First name is required";
-      if (!lastName) newErrors.lastName = "Last name is required";
+      if (!firstName) newErrors.firstName = "Vorname ist erforderlich";
+      if (!lastName) newErrors.lastName = "Nachname ist erforderlich";
     }
 
     setErrors(newErrors);
