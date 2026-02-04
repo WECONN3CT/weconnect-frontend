@@ -30,6 +30,9 @@ export const API_ENDPOINTS = {
     DASHBOARD: '/analytics/dashboard',
     POST: (id: string) => `/analytics/posts/${id}`,
   },
+  UPLOAD: {
+    IMAGES: '/upload/images',
+  },
 } as const;
 
 // Platform Configuration

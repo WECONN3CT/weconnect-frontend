@@ -263,9 +263,18 @@ export const CreatePostPage = () => {
         postData.scheduledAt = new Date(`${scheduleDate}T${scheduleTime}`).toISOString();
       }
 
-      // TODO: Handle image upload to storage service
+      // Upload images to Supabase Storage
       if (uploadedImages.length > 0) {
-        postData.imageUrls = uploadedImages.map(img => img.preview); // Temporary - should be real URLs
+        try {
+          const files = uploadedImages.map(img => img.file);
+          const uploadResult = await api.uploadFiles(API_ENDPOINTS.UPLOAD.IMAGES, files);
+          postData.imageUrls = uploadResult.urls;
+        } catch (uploadError) {
+          console.error('Image upload failed:', uploadError);
+          showError('Bilder konnten nicht hochgeladen werden. Bitte versuche es erneut.');
+          setIsSaving(false);
+          return;
+        }
       }
 
       const response = await api.post(API_ENDPOINTS.POSTS.CREATE, postData);

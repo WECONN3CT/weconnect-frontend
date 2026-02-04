@@ -89,6 +89,26 @@ export const api = {
 
   delete: <T>(url: string, config?: AxiosRequestConfig) =>
     apiRequest<T>({ ...config, method: 'DELETE', url }),
+
+  /**
+   * Upload files using FormData
+   */
+  uploadFiles: async (url: string, files: File[]): Promise<{ urls: string[] }> => {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('images', file);
+    });
+
+    const response = await apiClient.post(url, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    // API Response: { success: true, data: { urls: [...], count: N } }
+    const data = response.data?.data || response.data;
+    return { urls: data.urls || [] };
+  },
 };
 
 export default apiClient;
