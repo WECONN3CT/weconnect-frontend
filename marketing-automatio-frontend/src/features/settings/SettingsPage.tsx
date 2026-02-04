@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Sidebar } from '../../components/Sidebar';
 import { Header } from '../../components/Header';
 import { Card } from '../../components/ui/Card';
@@ -59,12 +60,22 @@ interface Preferences {
 }
 
 export const SettingsPage = () => {
+  const [searchParams] = useSearchParams();
   const { success: showSuccess, error: showError } = useToastStore();
   const { user, setUser } = useAuthStore();
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>('connections');
+  // Tab aus URL-Parameter lesen (z.B. /settings?tab=profile)
+  const tabFromUrl = searchParams.get('tab') as SettingsTab | null;
+  const [activeTab, setActiveTab] = useState<SettingsTab>(tabFromUrl || 'connections');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Tab aktualisieren wenn URL sich ändert
+  useEffect(() => {
+    if (tabFromUrl && ['connections', 'profile', 'preferences'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
 
   // Connections State
   const [connections, setConnections] = useState<Connection[]>([]);

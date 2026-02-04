@@ -158,7 +158,7 @@ export const Header = ({ title, subtitle, showSearch = true }: HeaderProps) => {
                     <div className="py-2">
                       <button
                         onClick={() => {
-                          navigate('/profile');
+                          navigate('/settings?tab=profile');
                           setShowUserMenu(false);
                         }}
                         className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
