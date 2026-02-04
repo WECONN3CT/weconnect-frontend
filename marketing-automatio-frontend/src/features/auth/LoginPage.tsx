@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { AlertCircle, X } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { useToastStore } from "../../store/toastStore";
 import { Input, PasswordInput } from "../../components/ui/Input";
@@ -17,17 +18,18 @@ const AuthPage = ({ initialMode = "login" }: AuthPageProps) => {
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // Auth state
   const { login, signup, isLoading } = useAuthStore();
-  const { success, error: showError } = useToastStore();
-  
+  const { success } = useToastStore();
+
   // Form state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (location.pathname === "/signup") {
@@ -44,8 +46,11 @@ const AuthPage = ({ initialMode = "login" }: AuthPageProps) => {
   const handleToggle = (nextMode: AuthMode) => {
     setMode(nextMode);
     setErrors({});
+    setFormError(null);
     navigate(nextMode === "login" ? "/login" : "/signup");
   };
+
+  const clearFormError = () => setFormError(null);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -73,21 +78,41 @@ const AuthPage = ({ initialMode = "login" }: AuthPageProps) => {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    
+    setFormError(null);
+
     if (!validateForm()) return;
 
     try {
       if (mode === "login") {
         await login({ email, password });
-        success("Welcome back!");
+        success("Willkommen zurück!");
         navigate("/dashboard");
       } else {
         await signup({ email, password, firstName, lastName });
-        success("Account created successfully!");
+        success("Account erfolgreich erstellt!");
         navigate("/dashboard");
       }
     } catch (err: any) {
-      showError(err.message || "An error occurred");
+      // Professionelle Fehlermeldungen
+      const errorMessage = err.response?.data?.message || err.message;
+
+      if (mode === "login") {
+        if (errorMessage?.includes("Passwort") || errorMessage?.includes("password") || errorMessage?.includes("E-Mail") || errorMessage?.includes("email") || err.response?.status === 401) {
+          setFormError("E-Mail oder Passwort ist falsch. Bitte überprüfe deine Eingaben.");
+        } else if (err.response?.status === 429) {
+          setFormError("Zu viele Anmeldeversuche. Bitte warte einen Moment und versuche es erneut.");
+        } else {
+          setFormError("Anmeldung fehlgeschlagen. Bitte versuche es später erneut.");
+        }
+      } else {
+        if (errorMessage?.includes("existiert") || errorMessage?.includes("exists") || err.response?.status === 409) {
+          setFormError("Diese E-Mail-Adresse ist bereits registriert. Bitte melde dich an oder verwende eine andere E-Mail.");
+        } else if (errorMessage?.includes("Passwort") || errorMessage?.includes("password")) {
+          setFormError("Das Passwort erfüllt nicht die Sicherheitsanforderungen. Mindestens 8 Zeichen mit Groß-/Kleinbuchstaben, Zahl und Sonderzeichen.");
+        } else {
+          setFormError("Registrierung fehlgeschlagen. Bitte überprüfe deine Eingaben und versuche es erneut.");
+        }
+      }
     }
   };
 
@@ -118,6 +143,23 @@ const AuthPage = ({ initialMode = "login" }: AuthPageProps) => {
               </div>
 
               <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+                {/* Error Alert */}
+                {formError && (
+                  <div className="relative flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-4 animate-shake">
+                    <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-red-800">{formError}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={clearFormError}
+                      className="text-red-400 hover:text-red-600 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
                 <Input
                   label="Email"
                   type="email"
@@ -177,6 +219,23 @@ const AuthPage = ({ initialMode = "login" }: AuthPageProps) => {
               </div>
 
               <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+                {/* Error Alert */}
+                {formError && (
+                  <div className="relative flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-4 animate-shake">
+                    <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-red-800">{formError}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={clearFormError}
+                      className="text-red-400 hover:text-red-600 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <Input
                     label="First name"
