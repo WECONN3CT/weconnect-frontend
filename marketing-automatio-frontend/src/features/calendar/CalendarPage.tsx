@@ -52,7 +52,11 @@ export const CalendarPage = () => {
       try {
         setIsLoading(true);
         const response = await api.get(API_ENDPOINTS.POSTS.LIST);
-        const postsData = (response as any)?.data || response;
+
+        // API Response Struktur: { success, data: { data: [...posts], pagination } }
+        const postsData = (response as any)?.data?.data || (response as any)?.data || response;
+
+        console.log('Calendar - Posts loaded:', postsData);
 
         if (Array.isArray(postsData)) {
           // Konvertiere Backend-Posts zu Calendar-Format
