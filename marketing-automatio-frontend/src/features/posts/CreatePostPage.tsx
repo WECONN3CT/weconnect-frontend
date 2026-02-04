@@ -247,7 +247,11 @@ export const CreatePostPage = () => {
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
+      // Titel aus den ersten 50 Zeichen des Contents generieren
+      const title = content.substring(0, 50) + (content.length > 50 ? '...' : '');
+
       const postData: any = {
+        title: title,
         content: content,
         platforms: selectedPlatforms,
         contentType: postType,
