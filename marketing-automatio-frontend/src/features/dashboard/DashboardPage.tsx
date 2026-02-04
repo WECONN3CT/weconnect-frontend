@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../../components/Sidebar';
 import { Header } from '../../components/Header';
 import { Card } from '../../components/ui/Card';
@@ -26,9 +27,9 @@ interface Post {
 // ApiResponse type available: { success: boolean; data: T }
 
 const quickActions = [
-  { icon: Link2, label: 'Connect Account', description: 'Link your social media accounts' },
-  { icon: BarChart3, label: 'View Analytics', description: 'Check your performance metrics' },
-  { icon: Settings, label: 'Settings', description: 'Manage your preferences' },
+  { icon: Link2, label: 'Connect Account', description: 'Link your social media accounts', path: '/dashboard/accounts' },
+  { icon: BarChart3, label: 'View Analytics', description: 'Check your performance metrics', path: '/dashboard/history' },
+  { icon: Settings, label: 'Settings', description: 'Manage your preferences', path: '/dashboard/accounts' },
 ];
 
 // Helper function to format scheduled date
@@ -82,6 +83,7 @@ const getPlatformStyle = (platform: string) => {
 };
 
 export const DashboardPage = () => {
+  const navigate = useNavigate();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -211,7 +213,11 @@ export const DashboardPage = () => {
               <Card className="p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-gray-900">Upcoming Schedule</h2>
-                  <button className="text-indigo-600 hover:text-indigo-700 transition-colors">
+                  <button
+                    onClick={() => navigate('/dashboard/calendar')}
+                    className="text-indigo-600 hover:text-indigo-700 transition-colors"
+                    title="View Calendar"
+                  >
                     <ExternalLink size={20} />
                   </button>
                 </div>
@@ -268,7 +274,10 @@ export const DashboardPage = () => {
                 <p className="text-indigo-100 mb-6 text-sm">
                   Start crafting your next social media masterpiece
                 </p>
-                <button className="w-full bg-white text-indigo-600 font-semibold py-3 px-4 rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2">
+                <button
+                  onClick={() => navigate('/dashboard/create')}
+                  className="w-full bg-white text-indigo-600 font-semibold py-3 px-4 rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2"
+                >
                   <Plus size={20} />
                   Create Post
                 </button>
@@ -285,6 +294,7 @@ export const DashboardPage = () => {
                     return (
                       <button
                         key={index}
+                        onClick={() => navigate(action.path)}
                         className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors text-left"
                       >
                         <Icon className="text-gray-600" size={20} />

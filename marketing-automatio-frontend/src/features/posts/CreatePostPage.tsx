@@ -1,16 +1,21 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../../components/Sidebar';
 import { Header } from '../../components/Header';
 import { Card } from '../../components/ui/Card';
-// Button für spätere Verwendung
-// import { Button } from '../../components/ui/Button';
-import { Sparkles, Image as ImageIcon, FileText, Send, RefreshCw, Calendar } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, FileText, Send, RefreshCw, Calendar, X, Loader2 } from 'lucide-react';
+import { api } from '../../services/apiClient';
+import { API_ENDPOINTS } from '../../lib/constants';
+import { useToastStore } from '../../store/toastStore';
 
 type Platform = 'instagram-feed' | 'instagram-reels' | 'linkedin';
 type ContentType = 'text' | 'article' | 'carousel';
 type ToneStyle = 'professional' | 'casual' | 'friendly' | 'formal' | 'creative' | 'humorous';
 
 export const CreatePostPage = () => {
+  const navigate = useNavigate();
+  const { success, error: showError } = useToastStore();
+
   const [topic, setTopic] = useState('');
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [contentType, setContentType] = useState<ContentType>('text');
@@ -18,6 +23,10 @@ export const CreatePostPage = () => {
   const [imagePrompt, setImagePrompt] = useState('');
   const [generatedContent, setGeneratedContent] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
 
   const handlePlatformToggle = (platform: Platform) => {
     setPlatforms(prev =>
@@ -29,7 +38,7 @@ export const CreatePostPage = () => {
 
   const handleGenerate = async () => {
     setIsGenerating(true);
-    // Simulate AI generation
+    // Simulate AI generation (später durch echte AI ersetzen)
     setTimeout(() => {
       setGeneratedContent({
         topic: topic,
@@ -47,6 +56,84 @@ export const CreatePostPage = () => {
       });
       setIsGenerating(false);
     }, 2000);
+  };
+
+  // Post als Draft speichern
+  const handleSaveDraft = async () => {
+    if (!generatedContent) return;
+
+    setIsSaving(true);
+    try {
+      await api.post(API_ENDPOINTS.POSTS.CREATE, {
+        title: topic,
+        content: generatedContent.generatedText,
+        platforms: platforms,
+        status: 'draft',
+      });
+      success('Post als Entwurf gespeichert!');
+      navigate('/dashboard');
+    } catch (err: any) {
+      showError(err.response?.data?.message || 'Fehler beim Speichern');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Post planen (mit Datum)
+  const handleSchedule = async () => {
+    if (!generatedContent || !scheduleDate || !scheduleTime) return;
+
+    setIsSaving(true);
+    try {
+      const scheduledAt = new Date(`${scheduleDate}T${scheduleTime}`).toISOString();
+
+      await api.post(API_ENDPOINTS.POSTS.CREATE, {
+        title: topic,
+        content: generatedContent.generatedText,
+        platforms: platforms,
+        status: 'scheduled',
+        scheduledAt: scheduledAt,
+      });
+      success('Post erfolgreich geplant!');
+      setShowScheduleModal(false);
+      navigate('/dashboard/calendar');
+    } catch (err: any) {
+      showError(err.response?.data?.message || 'Fehler beim Planen');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Post jetzt veröffentlichen (speichert als "review" für n8n)
+  const handlePostNow = async () => {
+    if (!generatedContent) return;
+
+    setIsSaving(true);
+    try {
+      // Erst Post erstellen
+      const response = await api.post(API_ENDPOINTS.POSTS.CREATE, {
+        title: topic,
+        content: generatedContent.generatedText,
+        platforms: platforms,
+        status: 'review',
+      });
+
+      const postId = (response as any)?.data?.id || (response as any)?.id;
+
+      if (postId) {
+        // Dann veröffentlichen (triggert n8n Webhook)
+        await api.post(API_ENDPOINTS.POSTS.PUBLISH(postId), {});
+        success('Post wird veröffentlicht!');
+      } else {
+        success('Post erstellt! Veröffentlichung wird vorbereitet...');
+      }
+
+      navigate('/dashboard');
+    } catch (err: any) {
+      showError(err.response?.data?.message || 'Fehler beim Veröffentlichen');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -329,33 +416,37 @@ export const CreatePostPage = () => {
                     {/* Action Buttons */}
                     <div className="pt-4 border-t border-gray-200">
                       <div className="grid grid-cols-2 gap-3">
-                        <button 
+                        <button
                           onClick={handleGenerate}
-                          className="bg-white border-2 border-indigo-600 text-indigo-600 font-semibold py-3 px-4 rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2"
+                          disabled={isSaving}
+                          className="bg-white border-2 border-indigo-600 text-indigo-600 font-semibold py-3 px-4 rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                           <RefreshCw size={18} />
                           Regenerate
                         </button>
-                        <button 
-                          onClick={() => {
-                            alert('Post published successfully! 🎉\n\nYour content has been posted to: ' + generatedContent.platforms.join(', '));
-                            // Here you would integrate with your backend API
-                          }}
-                          className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-3 px-4 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                        <button
+                          onClick={handlePostNow}
+                          disabled={isSaving}
+                          className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-3 px-4 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl disabled:opacity-50"
                         >
-                          <Send size={18} />
+                          {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
                           Post Now
                         </button>
                       </div>
-                      <button 
-                        onClick={() => {
-                          alert('Post scheduled for later! 📅');
-                          // Navigate to calendar page or open schedule modal
-                        }}
-                        className="w-full mt-3 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                      <button
+                        onClick={() => setShowScheduleModal(true)}
+                        disabled={isSaving}
+                        className="w-full mt-3 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         <Calendar size={18} />
                         Schedule for Later
+                      </button>
+                      <button
+                        onClick={handleSaveDraft}
+                        disabled={isSaving}
+                        className="w-full mt-2 text-gray-500 text-sm hover:text-gray-700 transition-colors"
+                      >
+                        Save as Draft
                       </button>
                     </div>
                   </div>
@@ -366,6 +457,73 @@ export const CreatePostPage = () => {
             </div>
           </div>
         </main>
+
+        {/* Schedule Modal */}
+        {showScheduleModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Post planen</h3>
+                <button
+                  onClick={() => setShowScheduleModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Datum
+                  </label>
+                  <input
+                    type="date"
+                    value={scheduleDate}
+                    onChange={(e) => setScheduleDate(e.target.value)}
+                    min={new Date().toISOString().split('T')[0]}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Uhrzeit
+                  </label>
+                  <input
+                    type="time"
+                    value={scheduleTime}
+                    onChange={(e) => setScheduleTime(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600">
+                    <strong>Plattformen:</strong> {platforms.map(p => p.replace('-', ' ')).join(', ')}
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => setShowScheduleModal(false)}
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    onClick={handleSchedule}
+                    disabled={!scheduleDate || !scheduleTime || isSaving}
+                    className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Calendar size={18} />}
+                    Planen
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
