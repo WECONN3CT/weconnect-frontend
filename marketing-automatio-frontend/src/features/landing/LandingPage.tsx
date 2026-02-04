@@ -1,4 +1,5 @@
 import {
+  LandingHeader,
   Hero,
   SocialProof,
   Features,
@@ -13,6 +14,7 @@ import {
 export const LandingPage = () => {
   return (
     <div className="min-h-screen">
+      <LandingHeader />
       <Hero />
       <SocialProof />
       <Features />

@@ -1,3 +1,4 @@
+export { LandingHeader } from './LandingHeader';
 export { Hero } from './Hero';
 export { SocialProof } from './SocialProof';
 export { Features } from './Features';
