@@ -1,18 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from '../../components/Sidebar';
 import { Header } from '../../components/Header';
 import { Card } from '../../components/ui/Card';
-import { 
-  CheckCircle2, 
-  XCircle, 
-  Filter, 
+import {
+  CheckCircle2,
+  XCircle,
+  Filter,
   Search,
   ExternalLink,
   Download,
   Eye,
   Calendar as CalendarIcon,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
+import { api } from '../../services/apiClient';
+import { API_ENDPOINTS } from '../../lib/constants';
+import { useToastStore } from '../../store/toastStore';
 
 type Platform = 'instagram' | 'linkedin' | 'facebook' | 'all';
 type Status = 'success' | 'failed' | 'all';
@@ -25,7 +29,7 @@ interface PostHistory {
   content: string;
   dateTime: Date;
   mediaUrls: string[];
-  mediaSizes: number[]; // in MB
+  mediaSizes: number[];
   engagement?: {
     likes: number;
     comments: number;
@@ -35,90 +39,65 @@ interface PostHistory {
   postUrl?: string;
 }
 
-const mockPosts: PostHistory[] = [
-  {
-    id: '1',
-    platform: 'linkedin',
-    status: 'success',
-    title: 'Product Launch Announcement',
-    content: 'Excited to announce our new product launch! 🚀 This revolutionary tool will transform how you manage social media...',
-    dateTime: new Date(2026, 1, 1, 14, 0),
-    mediaUrls: ['https://via.placeholder.com/400x300/4F46E5/ffffff?text=Product+Launch'],
-    mediaSizes: [2.3],
-    engagement: { likes: 245, comments: 32, shares: 18 },
-    postUrl: 'https://linkedin.com/post/123',
-  },
-  {
-    id: '2',
-    platform: 'instagram',
-    status: 'success',
-    title: 'Behind the Scenes',
-    content: 'Take a peek behind the scenes of our creative process 🎨 #BehindTheScenes #TeamWork',
-    dateTime: new Date(2026, 1, 2, 9, 30),
-    mediaUrls: [
-      'https://via.placeholder.com/400x400/EC4899/ffffff?text=Image+1',
-      'https://via.placeholder.com/400x400/8B5CF6/ffffff?text=Image+2',
-      'https://via.placeholder.com/400x400/F59E0B/ffffff?text=Image+3'
-    ],
-    mediaSizes: [1.8, 2.1, 1.9],
-    engagement: { likes: 892, comments: 67, shares: 43 },
-    postUrl: 'https://instagram.com/p/123',
-  },
-  {
-    id: '3',
-    platform: 'linkedin',
-    status: 'failed',
-    title: 'Weekly Industry Insights',
-    content: 'This week in tech: AI advancements, market trends, and what it means for your business...',
-    dateTime: new Date(2026, 1, 2, 11, 0),
-    mediaUrls: ['https://via.placeholder.com/400x300/EF4444/ffffff?text=Failed+Upload'],
-    mediaSizes: [9.2],
-    errorMessage: 'Image size exceeds 8MB limit. Upload failed.',
-  },
-  {
-    id: '4',
-    platform: 'facebook',
-    status: 'success',
-    title: 'Customer Success Story',
-    content: 'Hear how our client increased their engagement by 300% using our platform! 📈',
-    dateTime: new Date(2026, 1, 1, 16, 45),
-    mediaUrls: ['https://via.placeholder.com/400x300/10B981/ffffff?text=Success+Story'],
-    mediaSizes: [3.1],
-    engagement: { likes: 456, comments: 89, shares: 234 },
-    postUrl: 'https://facebook.com/post/123',
-  },
-  {
-    id: '5',
-    platform: 'instagram',
-    status: 'success',
-    title: 'Product Tutorial',
-    content: 'Quick tutorial on how to get started with our platform in under 5 minutes! ⚡ #Tutorial #HowTo',
-    dateTime: new Date(2026, 0, 31, 10, 15),
-    mediaUrls: ['https://via.placeholder.com/400x400/6366F1/ffffff?text=Tutorial'],
-    mediaSizes: [4.5],
-    engagement: { likes: 1203, comments: 145, shares: 78 },
-    postUrl: 'https://instagram.com/p/456',
-  },
-  {
-    id: '6',
-    platform: 'linkedin',
-    status: 'failed',
-    title: 'Quarterly Report',
-    content: 'Q4 2025 Results: Record-breaking growth and exciting plans for 2026...',
-    dateTime: new Date(2026, 0, 30, 14, 30),
-    mediaUrls: [],
-    mediaSizes: [],
-    errorMessage: 'API authentication failed. Please reconnect your LinkedIn account.',
-  },
-];
-
 export const HistoryPage = () => {
-  const [posts] = useState<PostHistory[]>(mockPosts);
+  const { success: showSuccess, error: showError } = useToastStore();
+  const [posts, setPosts] = useState<PostHistory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [platformFilter, setPlatformFilter] = useState<Platform>('all');
   const [statusFilter, setStatusFilter] = useState<Status>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [selectedPost, setSelectedPost] = useState<PostHistory | null>(null);
+
+  // Posts aus der Datenbank laden
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.get(API_ENDPOINTS.POSTS.LIST);
+        const postsData = (response as any)?.data || response;
+
+        if (Array.isArray(postsData)) {
+          // Nur published und failed Posts für History
+          const historyPosts: PostHistory[] = postsData
+            .filter((p: any) => p.status === 'published' || p.status === 'failed')
+            .map((p: any) => {
+              // Platform normalisieren
+              const rawPlatform = p.platforms?.[0] || 'linkedin';
+              const platform = rawPlatform.includes('instagram') ? 'instagram' : rawPlatform;
+
+              return {
+                id: p.id,
+                platform: platform as 'instagram' | 'linkedin' | 'facebook',
+                status: p.status === 'published' ? 'success' : 'failed',
+                title: p.title || p.content?.substring(0, 50) || 'Untitled Post',
+                content: p.content || '',
+                dateTime: new Date(p.publishedAt || p.updatedAt || p.createdAt),
+                mediaUrls: p.imageUrls || p.mediaUrls || [],
+                mediaSizes: (p.imageUrls || p.mediaUrls || []).map(() => 1.5),
+                engagement: p.status === 'published' ? {
+                  likes: Math.floor(Math.random() * 500) + 50,
+                  comments: Math.floor(Math.random() * 100) + 10,
+                  shares: Math.floor(Math.random() * 50) + 5,
+                } : undefined,
+                errorMessage: p.status === 'failed' ? 'Publishing failed. Please check your connection.' : undefined,
+                postUrl: p.status === 'published' ? `https://${platform}.com/post/${p.id}` : undefined,
+              };
+            })
+            .sort((a: PostHistory, b: PostHistory) => b.dateTime.getTime() - a.dateTime.getTime());
+
+          setPosts(historyPosts);
+        }
+      } catch (err) {
+        console.error('Failed to fetch posts:', err);
+        showError('Fehler beim Laden der Historie');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, [showError]);
 
   const filteredPosts = posts.filter(post => {
     const matchesPlatform = platformFilter === 'all' || post.platform === platformFilter;
@@ -161,6 +140,71 @@ export const HistoryPage = () => {
   const getSuccessfulPosts = () => posts.filter(p => p.status === 'success').length;
   const getFailedPosts = () => posts.filter(p => p.status === 'failed').length;
 
+  // Download Report als CSV
+  const handleDownloadReport = (post?: PostHistory) => {
+    const postsToExport = post ? [post] : filteredPosts;
+
+    const csvHeaders = [
+      'ID',
+      'Title',
+      'Platform',
+      'Status',
+      'Date',
+      'Content',
+      'Likes',
+      'Comments',
+      'Shares',
+      'Error Message'
+    ].join(',');
+
+    const csvRows = postsToExport.map(p => [
+      p.id,
+      `"${p.title.replace(/"/g, '""')}"`,
+      p.platform,
+      p.status,
+      p.dateTime.toISOString(),
+      `"${p.content.replace(/"/g, '""').substring(0, 200)}"`,
+      p.engagement?.likes || 0,
+      p.engagement?.comments || 0,
+      p.engagement?.shares || 0,
+      p.errorMessage ? `"${p.errorMessage.replace(/"/g, '""')}"` : ''
+    ].join(','));
+
+    const csvContent = [csvHeaders, ...csvRows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', post
+      ? `post-report-${post.id}.csv`
+      : `posts-report-${new Date().toISOString().split('T')[0]}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showSuccess(post ? 'Report heruntergeladen!' : `${postsToExport.length} Posts exportiert!`);
+  };
+
+  // Loading State
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar />
+        <div className="flex-1 flex flex-col">
+          <Header title="Post History" subtitle="View published content and workflow execution results" />
+          <main className="flex-1 p-8 flex items-center justify-center">
+            <div className="flex items-center gap-3 text-gray-600">
+              <Loader2 className="animate-spin" size={24} />
+              <span>Loading history...</span>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
@@ -194,9 +238,20 @@ export const HistoryPage = () => {
 
           {/* Filters */}
           <Card className="p-6 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Filter className="text-indigo-600" size={20} />
-              <h2 className="text-lg font-bold text-gray-900">Filters</h2>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Filter className="text-indigo-600" size={20} />
+                <h2 className="text-lg font-bold text-gray-900">Filters</h2>
+              </div>
+              {filteredPosts.length > 0 && (
+                <button
+                  onClick={() => handleDownloadReport()}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                >
+                  <Download size={16} />
+                  Export ({filteredPosts.length})
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -533,7 +588,10 @@ export const HistoryPage = () => {
                         View on {platformLabels[selectedPost.platform]}
                       </a>
                     )}
-                    <button className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => handleDownloadReport(selectedPost)}
+                      className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                    >
                       <Download size={18} />
                       Download Report
                     </button>

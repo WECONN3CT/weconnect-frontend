@@ -29,7 +29,7 @@ interface Post {
 const quickActions = [
   { icon: Link2, label: 'Connect Account', description: 'Link your social media accounts', path: '/dashboard/accounts' },
   { icon: BarChart3, label: 'View Analytics', description: 'Check your performance metrics', path: '/dashboard/history' },
-  { icon: Settings, label: 'Settings', description: 'Manage your preferences', path: '/dashboard/accounts' },
+  { icon: Settings, label: 'Settings', description: 'Manage your preferences', path: '/settings' },
 ];
 
 // Helper function to format scheduled date

@@ -9,6 +9,7 @@ import { CreatePostPage } from "../features/posts/CreatePostPage";
 import { CalendarPage } from "../features/calendar/CalendarPage";
 import { HistoryPage } from "../features/history/HistoryPage";
 import { AccountsPage } from "../features/accounts/AccountsPage";
+import { SettingsPage } from "../features/settings/SettingsPage";
 
 export const router = createBrowserRouter([
   { 
@@ -70,13 +71,22 @@ export const router = createBrowserRouter([
     ), 
     errorElement: <ErrorPage /> 
   },
-  { 
-    path: "/dashboard/accounts", 
+  {
+    path: "/dashboard/accounts",
     element: (
       <ProtectedRoute>
         <AccountsPage />
       </ProtectedRoute>
-    ), 
-    errorElement: <ErrorPage /> 
+    ),
+    errorElement: <ErrorPage />
+  },
+  {
+    path: "/settings",
+    element: (
+      <ProtectedRoute>
+        <SettingsPage />
+      </ProtectedRoute>
+    ),
+    errorElement: <ErrorPage />
   },
 ]);
