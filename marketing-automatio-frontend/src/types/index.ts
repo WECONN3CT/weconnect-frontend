@@ -11,6 +11,8 @@ export interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  name?: string;
+  company?: string;
   avatar?: string;
   createdAt: string;
   updatedAt: string;

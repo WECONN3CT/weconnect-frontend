@@ -69,7 +69,7 @@ export const HistoryPage = () => {
               return {
                 id: p.id,
                 platform: platform as 'instagram' | 'linkedin' | 'facebook',
-                status: p.status === 'published' ? 'success' : 'failed',
+                status: (p.status === 'published' ? 'success' : 'failed') as 'success' | 'failed',
                 title: p.title || p.content?.substring(0, 50) || 'Untitled Post',
                 content: p.content || '',
                 dateTime: new Date(p.publishedAt || p.updatedAt || p.createdAt),
