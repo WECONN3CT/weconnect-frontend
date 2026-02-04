@@ -11,7 +11,14 @@ import {
   Hand,
   AlertTriangle,
   Repeat,
-  Loader2
+  Loader2,
+  X,
+  Edit3,
+  Trash2,
+  Eye,
+  Calendar as CalendarIcon,
+  Send,
+  Image as ImageIcon
 } from 'lucide-react';
 import { api } from '../../services/apiClient';
 import { API_ENDPOINTS } from '../../lib/constants';
@@ -24,11 +31,16 @@ type Platform = 'instagram' | 'linkedin' | 'facebook';
 interface ScheduledPost {
   id: string;
   title: string;
+  content: string;
   date: Date;
   time: string;
   platform: Platform;
+  platforms: Platform[];
   triggerType: TriggerType;
   recurrence?: RecurrenceType;
+  status: string;
+  imageUrls?: string[];
+  hashtags?: string[];
 }
 
 const POSTING_LIMITS = {
@@ -40,49 +52,59 @@ const POSTING_LIMITS = {
 export const CalendarPage = () => {
   const { success, error: showError } = useToastStore();
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [_selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([]);
   const [_isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Post Detail/Edit Modal State
+  const [selectedPost, setSelectedPost] = useState<ScheduledPost | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedPost, setEditedPost] = useState<Partial<ScheduledPost>>({});
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Posts aus der Datenbank laden
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        setIsLoading(true);
-        const response = await api.get(API_ENDPOINTS.POSTS.LIST);
+  const fetchPosts = async () => {
+    try {
+      setIsLoading(true);
+      const response = await api.get(API_ENDPOINTS.POSTS.LIST);
 
-        // API Response Struktur: { success, data: { data: [...posts], pagination } }
-        const postsData = (response as any)?.data?.data || (response as any)?.data || response;
+      // API Response Struktur: { success, data: { data: [...posts], pagination } }
+      const postsData = (response as any)?.data?.data || (response as any)?.data || response;
 
-        console.log('Calendar - Posts loaded:', postsData);
+      console.log('Calendar - Posts loaded:', postsData);
 
-        if (Array.isArray(postsData)) {
-          // Konvertiere Backend-Posts zu Calendar-Format
-          const calendarPosts: ScheduledPost[] = postsData
-            .filter((p: any) => p.scheduledAt) // Nur geplante Posts
-            .map((p: any) => {
-              const scheduledDate = new Date(p.scheduledAt);
-              return {
-                id: p.id,
-                title: p.title || p.content?.substring(0, 30) + '...',
-                date: scheduledDate,
-                time: scheduledDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-                platform: (p.platforms?.[0] || 'instagram') as Platform,
-                triggerType: 'scheduled' as TriggerType,
-                recurrence: 'once' as RecurrenceType,
-              };
-            });
-          setScheduledPosts(calendarPosts);
-        }
-      } catch (err) {
-        console.error('Failed to fetch posts:', err);
-      } finally {
-        setIsLoading(false);
+      if (Array.isArray(postsData)) {
+        // Konvertiere Backend-Posts zu Calendar-Format
+        const calendarPosts: ScheduledPost[] = postsData
+          .filter((p: any) => p.scheduledAt) // Nur geplante Posts
+          .map((p: any) => {
+            const scheduledDate = new Date(p.scheduledAt);
+            return {
+              id: p.id,
+              title: p.title || p.content?.substring(0, 30) + '...',
+              content: p.content || '',
+              date: scheduledDate,
+              time: scheduledDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+              platform: (p.platforms?.[0] || 'instagram') as Platform,
+              platforms: p.platforms || [],
+              triggerType: 'scheduled' as TriggerType,
+              recurrence: 'once' as RecurrenceType,
+              status: p.status || 'scheduled',
+              imageUrls: p.imageUrls || [],
+              hashtags: p.hashtags || [],
+            };
+          });
+        setScheduledPosts(calendarPosts);
       }
-    };
+    } catch (err) {
+      console.error('Failed to fetch posts:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchPosts();
   }, []);
 
@@ -148,6 +170,70 @@ export const CalendarPage = () => {
     );
   };
 
+  // Post klicken -> Details Modal öffnen
+  const handlePostClick = (post: ScheduledPost, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedPost(post);
+    setEditedPost({
+      title: post.title,
+      content: post.content,
+      date: post.date,
+      time: post.time,
+      platforms: post.platforms,
+    });
+    setIsEditing(false);
+  };
+
+  // Post bearbeiten
+  const handleEditPost = async () => {
+    if (!selectedPost || !editedPost.content) return;
+
+    setIsSaving(true);
+    try {
+      // Neues Datum zusammensetzen
+      let scheduledAt = selectedPost.date.toISOString();
+      if (editedPost.date && editedPost.time) {
+        const dateStr = editedPost.date instanceof Date
+          ? editedPost.date.toISOString().split('T')[0]
+          : editedPost.date;
+        scheduledAt = new Date(`${dateStr}T${editedPost.time}`).toISOString();
+      }
+
+      await api.put(API_ENDPOINTS.POSTS.UPDATE(selectedPost.id), {
+        title: editedPost.title || editedPost.content?.substring(0, 50),
+        content: editedPost.content,
+        platforms: editedPost.platforms || selectedPost.platforms,
+        scheduledAt: scheduledAt,
+      });
+
+      success('Post erfolgreich aktualisiert!');
+      setSelectedPost(null);
+      setIsEditing(false);
+      fetchPosts(); // Posts neu laden
+    } catch (err: any) {
+      showError(err.response?.data?.message || 'Fehler beim Aktualisieren');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Post löschen
+  const handleDeletePost = async () => {
+    if (!selectedPost) return;
+
+    setIsDeleting(true);
+    try {
+      await api.delete(API_ENDPOINTS.POSTS.DELETE(selectedPost.id));
+      success('Post erfolgreich gelöscht!');
+      setSelectedPost(null);
+      setScheduledPosts(prev => prev.filter(p => p.id !== selectedPost.id));
+    } catch (err: any) {
+      showError(err.response?.data?.message || 'Fehler beim Löschen');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleAddPost = async () => {
     if (!newPost.title || !newPost.date || !newPost.time) return;
 
@@ -170,11 +256,14 @@ export const CalendarPage = () => {
       const post: ScheduledPost = {
         id: savedPost?.id || Date.now().toString(),
         title: newPost.title,
+        content: newPost.title,
         date: new Date(newPost.date),
         time: newPost.time,
         platform: newPost.platform,
+        platforms: [newPost.platform],
         triggerType: newPost.triggerType,
         recurrence: newPost.recurrence,
+        status: 'scheduled',
       };
 
       setScheduledPosts([...scheduledPosts, post]);
@@ -210,22 +299,26 @@ export const CalendarPage = () => {
     facebook: 'bg-blue-700',
   };
 
+  const platformNames = {
+    instagram: 'Instagram',
+    linkedin: 'LinkedIn',
+    facebook: 'Facebook',
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
-      
+
       <div className="flex-1 flex flex-col">
-        <Header 
-          title="Content Calendar" 
+        <Header
+          title="Content Calendar"
           subtitle="Manage your posting schedule and workflow triggers"
         />
-        
+
         <main className="flex-1 p-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Calendar Section */}
             <div className="lg:col-span-2 space-y-6">
-             
-
               {/* Calendar Card */}
               <Card className="p-6">
                 {/* Calendar Header */}
@@ -273,7 +366,7 @@ export const CalendarPage = () => {
                   {Array.from({ length: daysInMonth }).map((_, i) => {
                     const day = i + 1;
                     const posts = getPostsForDate(day);
-                    const isToday = 
+                    const isToday =
                       day === new Date().getDate() &&
                       currentDate.getMonth() === new Date().getMonth() &&
                       currentDate.getFullYear() === new Date().getFullYear();
@@ -282,8 +375,7 @@ export const CalendarPage = () => {
                     return (
                       <div
                         key={day}
-                        onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}
-                        className={`aspect-square p-2 border rounded-lg cursor-pointer transition-all hover:border-indigo-300 hover:shadow-sm ${
+                        className={`aspect-square p-2 border rounded-lg transition-all hover:border-indigo-300 hover:shadow-sm ${
                           isToday ? 'bg-indigo-50 border-indigo-300' : 'border-gray-200'
                         } ${warning ? 'border-orange-300 bg-orange-50' : ''}`}
                       >
@@ -295,8 +387,9 @@ export const CalendarPage = () => {
                             {posts.slice(0, 2).map(post => (
                               <div
                                 key={post.id}
-                                className={`text-xs text-white px-1 py-0.5 rounded truncate ${platformColors[post.platform]}`}
-                                title={post.title}
+                                onClick={(e) => handlePostClick(post, e)}
+                                className={`text-xs text-white px-1 py-0.5 rounded truncate cursor-pointer hover:opacity-80 transition-opacity ${platformColors[post.platform]}`}
+                                title={`${post.time} - ${post.title}`}
                               >
                                 {post.time} {post.title}
                               </div>
@@ -329,7 +422,6 @@ export const CalendarPage = () => {
                 Schedule New Post
               </button>
 
-             
               {/* Upcoming Posts */}
               <Card className="p-6">
                 <h3 className="font-bold text-gray-900 mb-4">Upcoming Posts</h3>
@@ -339,7 +431,11 @@ export const CalendarPage = () => {
                     .sort((a, b) => a.date.getTime() - b.date.getTime())
                     .slice(0, 5)
                     .map(post => (
-                      <div key={post.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div
+                        key={post.id}
+                        onClick={(e) => handlePostClick(post, e)}
+                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
+                      >
                         <div className={`w-8 h-8 ${platformColors[post.platform]} rounded flex items-center justify-center flex-shrink-0`}>
                           <span className="text-white text-xs font-bold">
                             {post.platform[0].toUpperCase()}
@@ -351,15 +447,244 @@ export const CalendarPage = () => {
                             {post.date.toLocaleDateString()} at {post.time}
                           </p>
                         </div>
-                        {post.recurrence !== 'once' && (
-                          <Repeat className="text-gray-400 flex-shrink-0" size={16} />
-                        )}
+                        <Eye className="text-gray-400 flex-shrink-0" size={16} />
                       </div>
                     ))}
+                  {scheduledPosts.filter(post => post.date >= new Date()).length === 0 && (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      Keine geplanten Posts
+                    </p>
+                  )}
                 </div>
               </Card>
             </div>
           </div>
+
+          {/* Post Detail/Edit Modal */}
+          {selectedPost && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <Card className="w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {isEditing ? 'Post bearbeiten' : 'Post Vorschau'}
+                  </h2>
+                  <button
+                    onClick={() => {
+                      setSelectedPost(null);
+                      setIsEditing(false);
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                {/* Platform Badge */}
+                <div className="flex items-center gap-3 mb-6">
+                  <div className={`w-10 h-10 ${platformColors[selectedPost.platform]} rounded-lg flex items-center justify-center`}>
+                    <span className="text-white text-sm font-bold">
+                      {selectedPost.platform[0].toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">{platformNames[selectedPost.platform]}</p>
+                    <p className="text-sm text-gray-500">
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                        selectedPost.status === 'scheduled' ? 'bg-blue-100 text-blue-700' :
+                        selectedPost.status === 'published' ? 'bg-green-100 text-green-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {selectedPost.status}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {isEditing ? (
+                  // Edit Mode
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Titel
+                      </label>
+                      <input
+                        type="text"
+                        value={editedPost.title || ''}
+                        onChange={(e) => setEditedPost({ ...editedPost, title: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Inhalt
+                      </label>
+                      <textarea
+                        value={editedPost.content || ''}
+                        onChange={(e) => setEditedPost({ ...editedPost, content: e.target.value })}
+                        rows={6}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {(editedPost.content || '').length} Zeichen
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Datum
+                        </label>
+                        <input
+                          type="date"
+                          value={editedPost.date instanceof Date
+                            ? editedPost.date.toISOString().split('T')[0]
+                            : selectedPost.date.toISOString().split('T')[0]}
+                          onChange={(e) => setEditedPost({ ...editedPost, date: new Date(e.target.value) })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Uhrzeit
+                        </label>
+                        <input
+                          type="time"
+                          value={editedPost.time || selectedPost.time}
+                          onChange={(e) => setEditedPost({ ...editedPost, time: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  // View Mode
+                  <div className="space-y-4">
+                    {/* Scheduled Date/Time */}
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                      <CalendarIcon className="text-gray-400" size={20} />
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {selectedPost.date.toLocaleDateString('de-DE', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                        <p className="text-sm text-gray-600">um {selectedPost.time} Uhr</p>
+                      </div>
+                    </div>
+
+                    {/* Content Preview */}
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">{selectedPost.title}</h3>
+                      <div className="p-4 bg-gray-50 rounded-lg">
+                        <p className="text-gray-700 whitespace-pre-wrap">{selectedPost.content}</p>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">
+                        {selectedPost.content.length} Zeichen
+                      </p>
+                    </div>
+
+                    {/* Hashtags */}
+                    {selectedPost.hashtags && selectedPost.hashtags.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-2">Hashtags</p>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedPost.hashtags.map((tag, i) => (
+                            <span key={i} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Images */}
+                    {selectedPost.imageUrls && selectedPost.imageUrls.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                          <ImageIcon size={16} />
+                          Bilder ({selectedPost.imageUrls.length})
+                        </p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {selectedPost.imageUrls.map((url, i) => (
+                            <img
+                              key={i}
+                              src={url}
+                              alt={`Bild ${i + 1}`}
+                              className="w-full aspect-square object-cover rounded-lg"
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-6 border-t mt-6">
+                  {isEditing ? (
+                    <>
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        disabled={isSaving}
+                        className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                      >
+                        Abbrechen
+                      </button>
+                      <button
+                        onClick={handleEditPost}
+                        disabled={isSaving}
+                        className="flex-1 bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {isSaving ? (
+                          <>
+                            <Loader2 size={18} className="animate-spin" />
+                            Speichern...
+                          </>
+                        ) : (
+                          <>
+                            <Send size={18} />
+                            Speichern
+                          </>
+                        )}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleDeletePost}
+                        disabled={isDeleting}
+                        className="flex items-center justify-center gap-2 px-4 py-3 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+                      >
+                        {isDeleting ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                          <Trash2 size={18} />
+                        )}
+                        Löschen
+                      </button>
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="flex-1 bg-gray-100 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Edit3 size={18} />
+                        Bearbeiten
+                      </button>
+                      <button
+                        onClick={() => setSelectedPost(null)}
+                        className="flex-1 bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors"
+                      >
+                        Schließen
+                      </button>
+                    </>
+                  )}
+                </div>
+              </Card>
+            </div>
+          )}
 
           {/* Add Post Modal */}
           {showAddModal && (
@@ -371,7 +696,7 @@ export const CalendarPage = () => {
                     onClick={() => setShowAddModal(false)}
                     className="text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    ✕
+                    <X size={24} />
                   </button>
                 </div>
 
