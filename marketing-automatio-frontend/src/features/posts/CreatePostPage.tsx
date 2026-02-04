@@ -9,7 +9,6 @@ import {
   FileText,
   Send,
   Calendar,
-  X,
   Loader2,
   ChevronRight,
   ChevronLeft,
