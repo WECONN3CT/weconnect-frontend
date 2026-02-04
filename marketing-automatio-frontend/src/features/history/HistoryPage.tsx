@@ -75,13 +75,16 @@ export const HistoryPage = () => {
                 dateTime: new Date(p.publishedAt || p.updatedAt || p.createdAt),
                 mediaUrls: p.imageUrls || p.mediaUrls || [],
                 mediaSizes: (p.imageUrls || p.mediaUrls || []).map(() => 1.5),
-                engagement: p.status === 'published' ? {
-                  likes: Math.floor(Math.random() * 500) + 50,
-                  comments: Math.floor(Math.random() * 100) + 10,
-                  shares: Math.floor(Math.random() * 50) + 5,
+                // Echte Engagement-Daten aus der DB (falls vorhanden)
+                engagement: p.engagement && (p.engagement.likes > 0 || p.engagement.comments > 0 || p.engagement.shares > 0) ? {
+                  likes: p.engagement.likes || 0,
+                  comments: p.engagement.comments || 0,
+                  shares: p.engagement.shares || 0,
                 } : undefined,
-                errorMessage: p.status === 'failed' ? 'Publishing failed. Please check your connection.' : undefined,
-                postUrl: p.status === 'published' ? `https://${platform}.com/post/${p.id}` : undefined,
+                // Echte Fehlermeldung aus der DB
+                errorMessage: p.errorMessage || (p.status === 'failed' ? 'Publishing failed. Please check your connection.' : undefined),
+                // Echte Post-URL aus der DB
+                postUrl: p.postUrl || (p.status === 'published' ? `https://${platform}.com/post/${p.id}` : undefined),
               };
             })
             .sort((a: PostHistory, b: PostHistory) => b.dateTime.getTime() - a.dateTime.getTime());
